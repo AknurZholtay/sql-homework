@@ -1,49 +1,46 @@
-name: SQL Homework Checker
+name: Check SQL Homework
 
 on:
- push:
-  paths:
-  - 'solution/**.sql' 
+  push:
+    paths:
+      - "solution/**/*.sql"
   pull_request:
-  paths:
-  - 'solution/**.sql'
+    paths:
+      - "solution/**/*.sql"
 
 jobs:
- check-sql:
- runs-on:ubuntu-latest
+  test-sql:
+    runs-on: ubuntu-latest
 
- services:
- postgres:
-  image:postgres:15
-  env:
-   POSTGRES_USER:testuser
-   POSTGRES_PASSWORD:testpass
-   POSTGRES_DB:testdb
-  ports:
-   - 5432:5432
-  options:>-
-   --health-cmd pg_isready
-   --health-interval 5s
-   --health-timeout 5s
-   --health-retries 10
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U testuser -d testdb"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
-steps:
- - name: Кодты жүктеу
-        uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: PostgreSQL дайын болғанша күту
-        run: |
-          until pg_isready -h localhost -U testuser; do sleep 1; done
+      - name: Run student SQL
+        env:
+          PGPASSWORD: testpass
+        run: |
+          psql -h localhost -U testuser -d testdb \
+            -f solution/homework.sql
 
-      - name: Студенттің SQL файлын орындау
-        env:
-          PGPASSWORD: testpass
-        run: |
-          psql -h localhost -U testuser -d testdb -f solution/homework.sql
-
-      - name: Тест скриптін іске қосу
-        env:
-          PGPASSWORD: testpass
-        run: |
-          psql -h localhost -U testuser -d testdb -f tests/check_ddl.sql
-
+      - name: Run tests
+        env:
+          PGPASSWORD: testpass
+        run: |
+          psql -h localhost -U testuser -d testdb \
+            -f tests/check_ddl.sql
