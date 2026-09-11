@@ -44,5 +44,3 @@ jobs:
         run: |
           psql -h localhost -U testuser -d testdb \
             -f tests/check_ddl.sql
-
--- test
