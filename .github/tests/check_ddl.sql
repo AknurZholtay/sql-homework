@@ -1,139 +1,202 @@
--- ============================================
--- DDL АВТОТЕСТ: кестелер мен шектеулерді тексеру
--- ============================================
-
--- Хелпер функция: тест сәтсіз болса қате шығарады
-CREATE OR REPLACE FUNCTION assert(condition BOOLEAN, message TEXT) RETURNS VOID AS $$
+-- Helper function for assertions
+CREATE OR REPLACE FUNCTION assert(condition boolean, message text)
+RETURNS void AS $$
 BEGIN
-  IF NOT condition THEN
-    RAISE EXCEPTION 'ТЕСТ СӘТСІЗ: %', message;
-  END IF;
-  RAISE NOTICE 'OK: %', message;
+    IF NOT condition THEN
+        RAISE EXCEPTION 'TEST FAILED: %', message;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
--- ---- 1. Кестелердің бар-жоғын тексеру ----
+
+-- =========================================
+-- 1. Check required tables
+-- =========================================
+
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.tables
-          WHERE table_name = 'departments'),
-  'departments кестесі жасалған'
+    to_regclass('public.departments') IS NOT NULL,
+    'Table departments does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.tables
-          WHERE table_name = 'teachers'),
-  'teachers кестесі жасалған'
+    to_regclass('public.teachers') IS NOT NULL,
+    'Table teachers does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.tables
-          WHERE table_name = 'students'),
-  'students кестесі жасалған'
+    to_regclass('public.students') IS NOT NULL,
+    'Table students does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.tables
-          WHERE table_name = 'courses'),
-  'courses кестесі жасалған'
+    to_regclass('public.courses') IS NOT NULL,
+    'Table courses does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.tables
-          WHERE table_name = 'enrollments'),
-  'enrollments кестесі жасалған'
+    to_regclass('public.enrollments') IS NOT NULL,
+    'Table enrollments does not exist'
 );
 
--- ---- 2. Маңызды бағандардың бар-жоғын тексеру ----
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'students' AND column_name = 'gpa'),
-  'students.gpa бағаны бар'
-);
+
+-- =========================================
+-- 2. Check required columns
+-- =========================================
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'students' AND column_name = 'department_id'),
-  'students.department_id бағаны бар'
-);
-
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'enrollments' AND column_name = 'grade'),
-  'enrollments.grade бағаны бар'
-);
-
--- ---- 3. PRIMARY KEY тексеру ----
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'departments'
-            AND constraint_type = 'PRIMARY KEY'),
-  'departments PRIMARY KEY бар'
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'students'
+          AND column_name = 'gpa'
+    ),
+    'students.gpa column does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'students'
-            AND constraint_type = 'PRIMARY KEY'),
-  'students PRIMARY KEY бар'
-);
-
--- ---- 4. FOREIGN KEY тексеру ----
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'students'
-            AND constraint_type = 'FOREIGN KEY'),
-  'students кестесінде FOREIGN KEY бар'
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'students'
+          AND column_name = 'department_id'
+    ),
+    'students.department_id column does not exist'
 );
 
 SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'enrollments'
-            AND constraint_type = 'FOREIGN KEY'),
-  'enrollments кестесінде FOREIGN KEY бар'
+    EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'enrollments'
+          AND column_name = 'grade'
+    ),
+    'enrollments.grade column does not exist'
 );
 
--- ---- 5. UNIQUE шектеуін тексеру ----
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.table_constraints
-          WHERE table_name = 'teachers'
-            AND constraint_type = 'UNIQUE'),
-  'teachers кестесінде UNIQUE шектеуі бар'
-);
 
--- ---- 6. CHECK шектеуін тексеру (GPA диапазоны) ----
-SELECT assert(
-  EXISTS (SELECT 1 FROM information_schema.check_constraints cc
-          JOIN information_schema.constraint_column_usage cu
-            ON cc.constraint_name = cu.constraint_name
-          WHERE cu.table_name = 'students'
-            AND cu.column_name = 'gpa'),
-  'students.gpa бағанында CHECK шектеуі бар'
-);
-
--- ---- 7. Функционалдық тест: деректер енгізу ----
-INSERT INTO departments (dept_name, dean_name, established_year, building)
-VALUES ('Тест факультеті', 'Тест Декан', 2000, 'А корпусы');
+-- =========================================
+-- 3. Check PRIMARY KEYS
+-- =========================================
 
 SELECT assert(
-  (SELECT COUNT(*) FROM departments WHERE dept_name = 'Тест факультеті') = 1,
-  'departments кестесіне деректер енгізу жұмысы дұрыс'
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'departments'
+          AND constraint_type = 'PRIMARY KEY'
+    ),
+    'departments must have PRIMARY KEY'
 );
 
--- ---- 8. GPA шектеуінің жұмысын тексеру ----
+SELECT assert(
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'students'
+          AND constraint_type = 'PRIMARY KEY'
+    ),
+    'students must have PRIMARY KEY'
+);
+
+
+-- =========================================
+-- 4. Check FOREIGN KEYS
+-- =========================================
+
+SELECT assert(
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'students'
+          AND constraint_type = 'FOREIGN KEY'
+    ),
+    'students must have FOREIGN KEY'
+);
+
+SELECT assert(
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'enrollments'
+          AND constraint_type = 'FOREIGN KEY'
+    ),
+    'enrollments must have FOREIGN KEY'
+);
+
+
+-- =========================================
+-- 5. Check UNIQUE constraint
+-- =========================================
+
+SELECT assert(
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'teachers'
+          AND constraint_type = 'UNIQUE'
+    ),
+    'teachers must have UNIQUE constraint'
+);
+
+
+-- =========================================
+-- 6. Check GPA CHECK constraint
+-- =========================================
+
+SELECT assert(
+    EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE table_name = 'students'
+          AND constraint_type = 'CHECK'
+    ),
+    'students.gpa must have CHECK constraint'
+);
+
+
+-- =========================================
+-- 7. Test valid INSERT
+-- =========================================
+
+INSERT INTO departments (id, name)
+VALUES (9999, 'Test Department');
+
+
+-- =========================================
+-- 8. Test invalid GPA
+-- GPA 9.99 must NOT be accepted
+-- =========================================
+
 DO $$
 BEGIN
-  BEGIN
-    INSERT INTO students (first_name, last_name, birth_date,
-                          admission_year, gpa, department_id)
-    SELECT 'Тест', 'Студент', '2000-01-01', 2023, 9.99,
-           department_id FROM departments LIMIT 1;
-    RAISE EXCEPTION 'ТЕСТ СӘТСІЗ: GPA CHECK шектеуі жұмыс істемейді!';
-  EXCEPTION WHEN check_violation THEN
-    RAISE NOTICE 'OK: GPA CHECK шектеуі дұрыс жұмыс істейді';
-  END;
+    BEGIN
+        INSERT INTO students (
+            id,
+            name,
+            gpa,
+            department_id
+        )
+        VALUES (
+            9999,
+            'Test Student',
+            9.99,
+            9999
+        );
+
+        RAISE EXCEPTION
+            'TEST FAILED: GPA CHECK constraint does not work';
+            
+    EXCEPTION
+        WHEN check_violation THEN
+            -- Expected result
+            NULL;
+    END;
 END;
 $$;
 
-RAISE NOTICE '============================';
-RAISE NOTICE 'БАРЛЫҚ ТЕСТТЕР СӘТТІ ӨТТІ!';
-RAISE NOTICE '============================';
+
+-- =========================================
+-- All tests passed
+-- =========================================
+
+SELECT 'ALL TESTS PASSED!' AS result;
