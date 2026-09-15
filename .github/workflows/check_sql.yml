@@ -4,11 +4,9 @@ on:
   push:
     paths:
       - 'solution/**/*.sql'
-      - '.github/workflows/check_sql.yml'
   pull_request:
     paths:
       - 'solution/**/*.sql'
-      - '.github/workflows/check_sql.yml'
 
 jobs:
   test-sql:
@@ -46,3 +44,4 @@ jobs:
         run: |
           psql -h localhost -U testuser -d testdb \
             -f tests/check_ddl.sql
+```
