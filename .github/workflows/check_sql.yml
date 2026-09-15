@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'solution/**/*.sql'
+      - '.github/workflows/check_sql.yml'
   pull_request:
     paths:
       - 'solution/**/*.sql'
+      - '.github/workflows/check_sql.yml'
 
 jobs:
   test-sql:
